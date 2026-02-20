@@ -10,6 +10,10 @@ const client = new Client({
 const CHANNEL_FILE = path.join(__dirname, "channels.json");
 
 function loadChannels() {
+  // 환경변수 우선, 없으면 파일에서 읽기
+  if (process.env.CHANNEL_IDS) {
+    return process.env.CHANNEL_IDS.split(",").map(id => id.trim()).filter(Boolean);
+  }
   try {
     const raw = fs.readFileSync(CHANNEL_FILE, "utf8");
     const data = JSON.parse(raw);
