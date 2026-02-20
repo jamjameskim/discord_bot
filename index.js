@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const { createClient } = require("@supabase/supabase-js");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildChannels],
 });
 
 const supabase = createClient(
@@ -44,6 +44,12 @@ async function clearChannels() {
 
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
+});
+
+// 채널 삭제 시 Supabase에서 자동 제거
+client.on("channelDelete", async (channel) => {
+  await removeChannel(channel.id);
+  console.log(`채널 삭제 감지 → Supabase에서 제거: ${channel.id}`);
 });
 
 client.on("interactionCreate", async (interaction) => {
