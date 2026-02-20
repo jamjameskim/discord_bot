@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const { createClient } = require("@supabase/supabase-js");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildChannels],
+  intents: [GatewayIntentBits.Guilds],
 });
 
 const supabase = createClient(
