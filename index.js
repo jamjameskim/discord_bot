@@ -1,30 +1,45 @@
 require("dotenv").config();
-const fs = require("fs");
-const path = require("path");
 const { Client, GatewayIntentBits } = require("discord.js");
+const { createClient } = require("@supabase/supabase-js");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-const CHANNEL_FILE = path.join(__dirname, "channels.json");
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
-function loadChannels() {
-  // 환경변수 우선, 없으면 파일에서 읽기
-  if (process.env.CHANNEL_IDS) {
-    return process.env.CHANNEL_IDS.split(",").map(id => id.trim()).filter(Boolean);
-  }
-  try {
-    const raw = fs.readFileSync(CHANNEL_FILE, "utf8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data.channelIds) ? data.channelIds : [];
-  } catch {
-    return [];
-  }
+async function loadChannels() {
+  const { data, error } = await supabase
+    .from("discord_channels")
+    .select("channel_id");
+  if (error) { console.error("loadChannels error:", error); return []; }
+  return data.map(row => row.channel_id);
 }
 
-function saveChannels(channelIds) {
-  fs.writeFileSync(CHANNEL_FILE, JSON.stringify({ channelIds }, null, 2), "utf8");
+async function addChannel(channelId) {
+  const { error } = await supabase
+    .from("discord_channels")
+    .insert({ channel_id: channelId });
+  return !error;
+}
+
+async function removeChannel(channelId) {
+  const { error } = await supabase
+    .from("discord_channels")
+    .delete()
+    .eq("channel_id", channelId);
+  return !error;
+}
+
+async function clearChannels() {
+  const { error } = await supabase
+    .from("discord_channels")
+    .delete()
+    .neq("channel_id", "");
+  return !error;
 }
 
 client.once("ready", () => {
@@ -39,24 +54,21 @@ client.on("interactionCreate", async (interaction) => {
   const channelId = interaction.channelId;
 
   if (sub === "addchannel") {
-    const channelIds = loadChannels();
+    const channelIds = await loadChannels();
     if (channelIds.includes(channelId)) {
       return interaction.reply({ content: "이미 등록된 채널이야.", ephemeral: true });
     }
-    channelIds.push(channelId);
-    saveChannels(channelIds);
+    await addChannel(channelId);
     return interaction.deferReply({ ephemeral: true }).then(() => interaction.deleteReply());
   }
 
   if (sub === "removechannel") {
-    const channelIds = loadChannels();
-    const next = channelIds.filter(id => id !== channelId);
-    saveChannels(next);
+    await removeChannel(channelId);
     return interaction.reply({ content: "🗑️ 이 채널을 전송 대상에서 제거했어.", ephemeral: true });
   }
 
   if (sub === "list") {
-    const channelIds = loadChannels();
+    const channelIds = await loadChannels();
     if (channelIds.length === 0) {
       return interaction.reply({ content: "전송 대상 채널이 아직 없어. `/broadcast addchannel`로 추가해줘.", ephemeral: true });
     }
@@ -65,13 +77,13 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (sub === "clearall") {
-    saveChannels([]);
+    await clearChannels();
     return interaction.reply({ content: "🗑️ 채널 목록을 전체 초기화했어.", ephemeral: true });
   }
 
   if (sub === "send") {
     const text = interaction.options.getString("text", true);
-    const channelIds = loadChannels();
+    const channelIds = await loadChannels();
 
     if (channelIds.length === 0) {
       return interaction.reply({ content: "전송 대상 채널이 없어. 먼저 `/broadcast addchannel`로 채널을 등록해줘.", ephemeral: true });
