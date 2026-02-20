@@ -26,6 +26,10 @@ const commands = [
       sub.setName("list")
         .setDescription("전송 대상 채널 목록 보기")
     )
+    .addSubcommand(sub =>
+      sub.setName("clearall")
+        .setDescription("전송 대상 채널 목록 전체 초기화")
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON()
 ];

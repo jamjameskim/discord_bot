@@ -64,6 +64,11 @@ client.on("interactionCreate", async (interaction) => {
     return interaction.reply({ content: `📌 전송 대상 채널:\n${lines}`, ephemeral: true });
   }
 
+  if (sub === "clearall") {
+    saveChannels([]);
+    return interaction.reply({ content: "🗑️ 채널 목록을 전체 초기화했어.", ephemeral: true });
+  }
+
   if (sub === "send") {
     const text = interaction.options.getString("text", true);
     const channelIds = loadChannels();
